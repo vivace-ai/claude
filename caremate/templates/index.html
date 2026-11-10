@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 케어메이트 다정이</title>
+<style>
+  :root { --acc:#3b3fb6; --warm:#c96f4a; --red:#c2402f; --ink:#23263a; --bg:#faf9f6; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:"Noto Sans KR","Noto Sans CJK KR",sans-serif; background:var(--bg); color:var(--ink); }
+  .app { max-width:440px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column; background:#fff; }
+  header { padding:22px 22px 14px; border-bottom:1px solid #eceef4; }
+  header h1 { margin:0; font-size:24px; }
+  header p { margin:4px 0 0; font-size:15px; color:#2f7d5b; }
+  #log { flex:1; padding:18px; display:flex; flex-direction:column; gap:12px; overflow-y:auto; }
+  .msg { max-width:84%; padding:14px 16px; border-radius:18px; font-size:20px; line-height:1.55; }
+  .me { align-self:flex-end; background:var(--acc); color:#fff; border-bottom-right-radius:6px; }
+  .bot { align-self:flex-start; background:#f2f3f8; border-bottom-left-radius:6px; }
+  .bot small { display:block; margin-top:6px; font-size:12px; color:#8a8fa3; }
+  .tool { align-self:center; font-size:13px; color:#2f7d5b; background:#eef6f1; padding:5px 12px; border-radius:20px; }
+  form { display:flex; gap:8px; padding:12px 14px; border-top:1px solid #eceef4; }
+  input { flex:1; font-size:19px; padding:14px 16px; border:2px solid #d9dbe5; border-radius:16px; }
+  button { font-size:18px; font-weight:700; border:0; border-radius:16px; padding:0 18px; background:var(--warm); color:#fff; }
+  .sos { margin:0 14px 16px; height:56px; width:calc(100% - 28px); background:#fbe9e6; color:var(--red); border:2px solid var(--red); font-size:20px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header><h1>다정이</h1><p>● 오늘도 곁에 있어요</p></header>
+  <div id="log"></div>
+  <form id="f"><input id="t" placeholder="말씀해 주세요" autocomplete="off"><button>보내기</button></form>
+  <!-- SOS는 AI를 거치지 않고 따로 동작한다 (요구사항 FR-07) -->
+  <button class="sos" onclick="alert('보호자와 119에 연락합니다')">도움 요청(SOS)</button>
+</div>
+<script>
+const history = [];
+const log = document.getElementById('log');
+function add(cls, text) {
+  const d = document.createElement('div'); d.className = 'msg ' + cls; d.textContent = text;
+  if (cls === 'bot') { const s = document.createElement('small'); s.textContent = 'AI가 만든 답변이에요'; d.appendChild(s); }
+  log.appendChild(d); log.scrollTop = log.scrollHeight;
+}
+function addTool(t) { const d = document.createElement('div'); d.className = 'tool'; d.textContent = t; log.appendChild(d); }
+document.getElementById('f').onsubmit = async (e) => {
+  e.preventDefault();
+  const t = document.getElementById('t'); const text = t.value.trim(); if (!text) return;
+  t.value = ''; add('me', text); history.push({role: 'user', content: text});
+  const r = await fetch('/chat', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({history})});
+  const data = await r.json();
+  (data.log || []).forEach(l => addTool('✓ ' + (l.tool === 'record_medication' ? l.slot + ' 약 기록됨' : '보호자 알림: ' + l.level)));
+  add('bot', data.reply); history.push({role: 'assistant', content: data.reply});
+};
+</script>
+</body>
+</html>
